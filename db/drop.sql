@@ -1,2 +1,8 @@
-DROP TABLE users; 
-DROP TABLE card; 
+DROP TABLE student_user CASCADE; 
+DROP TABLE teacher_user CASCADE; 
+DROP TABLE organization_user CASCADE; 
+DROP TABLE organization CASCADE; 
+DROP TABLE card CASCADE; 
+DROP TABLE deck CASCADE; 
+DROP TABLE deck_card CASCADE; 
+DROP TABLE card_study CASCADE; 
