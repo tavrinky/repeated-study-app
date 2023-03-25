@@ -4,7 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 import Data.Proxy (Proxy(..))
-import Servant.API ( Get, JSON, ReqBody, (:<|>)(..), (:>)(..))
+import Servant.API ( Get, JSON, ReqBody, (:<|>)(..), (:>)(..), Post, Capture)
 import Servant.Swagger.UI (SwaggerSchemaUI, swaggerSchemaUIServerT)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -33,16 +33,18 @@ api :: Proxy Api
 api = Proxy 
 
 server :: ServerT Api AppT 
-server = metaServer :<|> signupH 
+server = metaServer :<|> postingH 
 
-postingApi = signupH 
+postingH = orgSignupH :<|> teacherSignupH :<|> orgCreationH 
 
 type MetaApi = "swagger" :> Get '[JSON] OpenApi :<|> SwaggerSchemaUI "swagger-ui" "swagger.json"  :<|> "layout" :> Get '[JSON] Text 
 
 metaServer :: ServerT MetaApi AppT 
 metaServer = swaggerH :<|> swaggerServerH :<|> layoutH 
 
-type PostingApi = "signup" :> ReqBody '[JSON] OrgUser :> Get '[JSON] Bool 
+type PostingApi = "orgSignup" :> ReqBody '[JSON] OrgUser :> Post '[JSON] Bool :<|> 
+                    "teacherSignup" :> Capture "organization" Organization :>  ReqBody '[JSON] Teacher :> Post '[JSON] () :<|>
+                    "orgCreation" :> Capture "organization" Organization :> ReqBody '[JSON] OrgUser :> Post '[JSON] Bool 
 
 echoH :: Text -> AppT Text
 echoH = return
@@ -56,10 +58,21 @@ swaggerH = return $ toOpenApi (Proxy @PostingApi)
 swaggerDoc :: OpenApi
 swaggerDoc = toOpenApi (Proxy @PostingApi)
 
-signupH :: OrgUser -> AppT Bool 
-signupH (OrgUser username pw) = do 
+orgSignupH :: OrgUser -> AppT Bool 
+orgSignupH (OrgUser username pw) = do 
     (hash, salt) <- pwHash pw 
     orgSignup username hash salt 
+
+teacherSignupH :: Organization -> Teacher -> AppT () 
+teacherSignupH org (Teacher username pw) = do 
+    (hash, salt) <- pwHash pw 
+    (Just (DBOrganization orgKey _ _ _)) <- getOrganization org  
+    teacherSignup username hash salt orgKey 
+
+orgCreationH :: Organization -> OrgUser -> AppT Bool 
+orgCreationH org orgUser = do 
+    (Just dbOrgUser) <- getOrgUser orgUser
+    createOrg org $ userId dbOrgUser  
 
 swaggerServerH = swaggerSchemaUIServerT swaggerDoc 
 

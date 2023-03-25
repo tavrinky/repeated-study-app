@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS organization_user(
 
 CREATE TABLE IF NOT EXISTS organization(
     id SERIAL PRIMARY KEY, 
-    org_name TEXT NOT NULL, 
+    org_name TEXT NOT NULL UNIQUE, 
     created_by INT NOT NULL REFERENCES organization_user(id), 
     created_at TIMESTAMPTZ DEFAULT clock_timestamp() 
 );
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS teacher_user(
     username TEXT NOT NULL, 
     password BYTEA NOT NULL, 
     salt BYTEA NOT NULL,  
-    created_at TIMESTAMPTZ DEFAULT clock_timestamp(), 
-    organization INT NOT NULL REFERENCES organization(id) 
+    organization INT NOT NULL REFERENCES organization(id),
+    created_at TIMESTAMPTZ DEFAULT clock_timestamp()
 ); 
 
 CREATE TABLE IF NOT EXISTS card(

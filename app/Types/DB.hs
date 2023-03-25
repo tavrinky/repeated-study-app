@@ -1,6 +1,8 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Types.DB where 
 import GHC.Generics (Generic)
 import Database.PostgreSQL.Simple.FromField (FromField)
@@ -12,13 +14,13 @@ import Data.Time (ZonedTime)
 import Database.PostgreSQL.Simple (ToRow)
 import Database.PostgreSQL.Simple.FromRow (FromRow)
 
-newtype DBStudentUserPk = DBStudentUserPk { getStudentUserPk :: Int } deriving (Generic, FromField, ToField, Show, Eq)
+newtype DBStudentUserPk = DBStudentUserPk { getStudentUserPk :: Int } deriving newtype (FromField, ToField, Show, Eq)
 data DBStudentUser = DBStudentUser { id :: DBStudentUserPk, username :: Text, password :: ByteString, created_at :: ZonedTime } deriving (Show, Generic, ToRow, FromRow) 
 
-newtype DBOrganizationUserPk = DBOrganizationUserPk { getOrganizationUserPk :: Int } deriving (Generic, FromField, ToField, Show, Eq) 
-data DBOrganizationUser = DBOrganizationUser { id :: DBOrganizationUserPk, username :: Text, password :: ByteString , created_at :: ZonedTime } deriving (Show, Generic, ToRow, FromRow) 
+newtype DBOrganizationUserPk = DBOrganizationUserPk { getOrganizationUserPk :: Int } deriving newtype (FromField, ToField, Show, Eq) 
+data DBOrganizationUser = DBOrganizationUser { userId :: DBOrganizationUserPk, username :: Text, password :: ByteString , created_at :: ZonedTime } deriving (Show, Generic, ToRow, FromRow) 
 
-data DBOrganizationPk = DBOrganizationPk { getOrganizationPk :: Int } deriving (Generic, ToField, FromField, Eq, Show)
+newtype DBOrganizationPk = DBOrganizationPk { getOrganizationPk :: Int } deriving newtype ( ToField, FromField, Eq, Show)
 data DBOrganization = DBOrganization { id :: DBOrganizationPk, org_name :: Text, created_by :: DBOrganizationUserPk, created_at :: ZonedTime } deriving (Generic, Show, ToRow, FromRow) 
 
 data DBTeacherUserPk = DBTeacherUserPk { getTeacherUserPk :: Int } deriving (Generic, ToField, FromField, Eq, Show)

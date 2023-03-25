@@ -58,7 +58,7 @@ executable anki
     build-depends:    base ^>=4.16.4.0
                     , servant 
                     , aeson 
-                    , text 
+                    , text ^>=2.0.2
                     , servant-swagger-ui
                     , mtl
                     , transformers 
