@@ -21,19 +21,28 @@ import Data.OpenApi (OpenApi)
 import Data.ByteString (ByteString)
 import Crypto.Hash (SHA512(..), hashWith)
 import Data.ByteArray (convert)
+import Database.PostgreSQL.Simple (ConnectInfo (..), Connection, connect)
+
+import Types.DB 
+import Types.Domain
+import Types.App
+import Data.Text.Encoding (encodeUtf8)
+
 type Api = MetaApi :<|> PostingApi 
 api :: Proxy Api 
 api = Proxy 
 
 server :: ServerT Api AppT 
-server = metaServer :<|> echoH 
+server = metaServer :<|> signupH 
+
+postingApi = signupH 
 
 type MetaApi = "swagger" :> Get '[JSON] OpenApi :<|> SwaggerSchemaUI "swagger-ui" "swagger.json"  :<|> "layout" :> Get '[JSON] Text 
 
 metaServer :: ServerT MetaApi AppT 
 metaServer = swaggerH :<|> swaggerServerH :<|> layoutH 
 
-type PostingApi = "echo" :> ReqBody '[JSON] Text :> Get '[JSON] Text 
+type PostingApi = "signup" :> ReqBody '[JSON] OrgUser :> Get '[JSON] Bool 
 
 echoH :: Text -> AppT Text
 echoH = return
@@ -47,14 +56,14 @@ swaggerH = return $ toOpenApi (Proxy @PostingApi)
 swaggerDoc :: OpenApi
 swaggerDoc = toOpenApi (Proxy @PostingApi)
 
+signupH :: OrgUser -> AppT Bool 
+signupH (OrgUser username pw) = do 
+    (hash, salt) <- pwHash pw 
+    orgSignup username hash salt 
 
 swaggerServerH = swaggerSchemaUIServerT swaggerDoc 
 
-data Config = Config { connStr :: String } deriving (Generic, Show)
 
-newtype AppT a = AppT { runAppT :: ReaderT Config (RandomT Handler) a } deriving (Functor, Applicative, Monad, MonadReader Config, MonadIO, MonadState StdGen  ) 
-
-newtype RandomT m a = RandomT { runRandomT :: StateT StdGen m a } deriving (Functor, Applicative, Monad, MonadState StdGen, MonadTrans, MonadIO  )
 
 readerNt :: Config -> AppT a -> RandomT Handler a
 readerNt config (AppT app) = runReaderT app config
@@ -70,22 +79,24 @@ mkApp config gen = serve api $ hoistServer api (appNt config gen) server
 
 main :: IO ()
 main = do 
+    pgPass <- readFile "./config/pgpass"
     gen <- initStdGen 
-    let config = Config "test.db"
+    let connInfo = ConnectInfo { connectHost = "127.0.0.1", connectPort = 5432, connectUser = "ankidb", connectPassword = pgPass, connectDatabase = "ankidb" }
+    conn <- connect connInfo 
+    let config = Config conn 
     print "starting"
     runSettings defaultSettings $ mkApp config gen 
 
 
-newtype PWHash = PWHash { getHash :: ByteString } 
-newtype PWSalt = PWSalt { getSalt :: ByteString } 
 
 class PasswordHash m where 
-    pwHash :: ByteString -> m (PWHash, PWSalt) 
+    pwHash :: Text -> m (PWHash, PWSalt) 
 
 instance PasswordHash AppT where 
     pwHash pw = do 
+        let pwBS = encodeUtf8 pw 
         gen <- initStdGen
         let (salt, _) = genByteString 64 gen 
-        let saltless = convert $ hashWith SHA512 pw
+        let saltless = convert $ hashWith SHA512 pwBS 
         let salted = convert $ hashWith SHA512 (saltless <> salt) 
         return (PWHash salted, PWSalt salt)   

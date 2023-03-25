@@ -1,0 +1,9 @@
+TODO: 
+
+- Set up postgres (likiely involves editing pg_hba.conf). Success condition: psql runs on local user 
+- Set up postgres connection/database for anki project 
+- Set up postgres connection management within the app, store config as script that loads env vars (Success condition: )
+- Set up postgres user and password tables 
+- Set up signup/login routes 
+- Set up deck creation/deletion (tombstone?)
+- 
