@@ -1,0 +1,8 @@
+
+prereq: cabal (install via ghcup if you haven't already for a better time)
+
+run cabal v2-run in root directory and wait to say "starting"
+
+routes are viewable at http://localhost:3000/swagger-ui/
+or
+via `echo -e $(curl localhost:3000/layout)`
