@@ -1,10 +1,15 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Types.App where
 import Database.PostgreSQL.Simple (Connection, execute, execute_, query, Only (..))
 import GHC.Generics (Generic)
-import Servant (Handler)
+import Servant (Handler, ServerError)
 import Control.Monad.Reader (ReaderT, MonadReader, MonadIO (liftIO), MonadTrans, asks)
 import Control.Monad.State.Strict (StateT, MonadState)
 import System.Random (StdGen)
@@ -14,13 +19,15 @@ import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Control.Monad (void)
 import Data.Maybe (listToMaybe)
 import Data.Text.Encoding (decodeUtf8Lenient)
+import Control.Monad.Error (MonadError)
+
 
 data Config = Config { conn :: Connection } deriving (Generic)
 
-newtype AppT a = AppT { runAppT :: ReaderT Config (RandomT Handler) a } deriving (Functor, Applicative, Monad, MonadReader Config, MonadIO, MonadState StdGen  ) 
+newtype AppT a = AppT { runAppT :: ReaderT Config (RandomT Handler) a } deriving (Functor, Applicative, Monad, MonadReader Config, MonadIO, MonadState StdGen, MonadError ServerError  ) 
 
 newtype RandomT m a = RandomT { runRandomT :: StateT StdGen m a } deriving (Functor, Applicative, Monad, MonadState StdGen, MonadTrans, MonadIO  )
- 
+deriving instance MonadError e m => MonadError e (RandomT m)     
 class MonadDB m where 
     orgSignup :: Username -> PWHash -> PWSalt -> m Bool 
     teacherSignup :: Username -> PWHash -> PWSalt -> DBOrganizationPk -> m () 
@@ -56,5 +63,5 @@ instance MonadDB AppT where
         results <- liftIO $ query conn' [sql| SELECT * FROM organization_user WHERE organization_username = ? |] $ Only username 
         return $ listToMaybe results 
 
-instance MonadFail AppT where 
-    fail = error . ("whoopsie\n" <>) 
+{-instance MonadFail AppT where 
+    fail = error . ("whoopsie\n" <>)  -} 
